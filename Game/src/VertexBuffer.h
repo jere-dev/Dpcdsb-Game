@@ -9,15 +9,17 @@ namespace GE {
 	class VertexBuffer 
 	{
 	public:
-		unsigned int VertexBuffer_ID;
 
 		VertexBuffer(std::vector<float>& vertices);
 		~VertexBuffer();
+		void AddAtribute(GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const void* pointer);
+		
 		void Bind();
 		void UnBind();
 
 
 	private:
+		unsigned int VertexBuffer_ID;
 		
 	};
 }

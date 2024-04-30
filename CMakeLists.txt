@@ -15,6 +15,7 @@ target_include_directories(GLAD PRIVATE ${CMAKE_CURRENT_SOURCE_DIR/}Game/Vendor/
 
 add_executable(Game ${Game_SRC})
 target_include_directories(Game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR/}Game/Vendor/GLAD/include)
+target_include_directories(Game PRIVATE ${CMAKE_CURRENT_SOURCE_DIR/}Game/Vendor/glm)
 target_link_libraries(Game glfw)
 target_link_libraries(Game GLAD)
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT Game)
