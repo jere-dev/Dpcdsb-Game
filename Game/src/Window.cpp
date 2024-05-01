@@ -1,7 +1,8 @@
 #include "Window.h"
 
 
-namespace GE {
+namespace GE {    
+
     // process all input: query GLFW whether relevant keys are pressed/released this frame and react accordingly
     void processInput(GLFWwindow* window)
     {
@@ -17,7 +18,7 @@ namespace GE {
         glViewport(0, 0, width, height);
     }
 
-    Window::Window(int hieght, int width, const char* title)
+    Window::Window(int hieght, int width, const char* title, GLFWkeyfun callback)
         : m_hieght(hieght), m_width(width), m_title(title)
     {
         // glfw: initialize and configure
@@ -41,6 +42,8 @@ namespace GE {
         {
             std::cout << "Failed to initialize GLAD" << std::endl;
         }
+
+        glfwSetKeyCallback(m_window, callback);
 
     }
 

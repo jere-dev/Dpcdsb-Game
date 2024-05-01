@@ -4,13 +4,44 @@
 #include "VertexArray.h"
 #include "IndexBuffer.h"
 #include "Texture.h"
+#include "camera.h"
+
+std::map<int, bool> keymap;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	if (action == GLFW_PRESS)
+	{
+		keymap[key] = true;
+	}
+	else if (action == GLFW_RELEASE)
+	{
+		keymap[key] = false;
+	}
+}
+
+
+static bool KeyPressed(int key)
+{
+	if (keymap.find(key) != keymap.end())
+	{
+		return keymap[key];
+	}
+	else
+	{
+		return false;
+	}
+}
 
 int main()
 {
-	GE::Window win = GE::Window(600, 800, "Sky");
+	GE::Window win = GE::Window(600, 800, "Sky", key_callback);
+	GE::Camera cam = GE::Camera(-.6, .6, -.8, .8);
+	//cam.SetPosition({0.5f, 0.5f, 0.0f});
+	//cam.SetRotation(90.0f);
 
-	GE::Shader shader = GE::Shader("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/texture-shader.vs", 
-		"C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/texmix-shader.fs");
+	GE::Shader shader = GE::Shader("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/cam-shader.vs", 
+		"C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/texture-shader.fs");
 	shader.use();
 
 	stbi_set_flip_vertically_on_load(true);
@@ -43,14 +74,10 @@ int main()
 	GE::Texture texture = GE::Texture("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/textures/container.jpg", GL_RGB);
 	texture.Bind(GL_TEXTURE0);
 
-	GE::Texture texture2 = GE::Texture("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/textures/awesomeface.png", GL_RGBA);
-	texture2.Bind(GL_TEXTURE1);
-
-	shader.setUniformInt("texture1", 0);
-	shader.setUniformInt("texture2", 1);
-
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
 
 	shader.setUinforFloat2d("iResolution", 600, 800);
 
@@ -60,13 +87,41 @@ int main()
 	//render after clear and before update or blank screen
 	while (!glfwWindowShouldClose(win.m_window))
 	{
+		
+		if (KeyPressed(GLFW_KEY_A))
+		{
+			auto tempvec = cam.GetPosition();
+			tempvec.x += .001;
+			cam.SetPosition(tempvec);
+			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
+		}
+
+		if (KeyPressed(GLFW_KEY_D))
+		{
+			auto tempvec = cam.GetPosition();
+			tempvec.x -= .001;
+			cam.SetPosition(tempvec);
+			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
+		}
+		if (KeyPressed(GLFW_KEY_S))
+		{
+			auto tempvec = cam.GetPosition();
+			tempvec.y += .001;
+			cam.SetPosition(tempvec);
+			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
+		}
+		if (KeyPressed(GLFW_KEY_W))
+		{
+			auto tempvec = cam.GetPosition();
+			tempvec.y -= .001;
+			cam.SetPosition(tempvec);
+			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
+		}
+
 		//float currentFrame = glfwGetTime();
 		time = glfwGetTime();
 		shader.setUniformFloat("iTime", time);
 		win.clear();
-
-		texture.Bind(GL_TEXTURE0);
-		texture2.Bind(GL_TEXTURE1);
 
 		shader.use();
 		VAO.Bind();
