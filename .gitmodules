@@ -4,3 +4,9 @@
 [submodule "Game/Vendor/glm"]
 	path = Game/Vendor/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "Game/Vendor/flecs"]
+	path = Game/Vendor/flecs
+	url = https://github.com/SanderMertens/flecs.git
+[submodule "Game/Vendor/box2d"]
+	path = Game/Vendor/box2d
+	url = https://github.com/erincatto/box2d.git

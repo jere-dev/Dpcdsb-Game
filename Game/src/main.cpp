@@ -6,6 +6,11 @@
 #include "Texture.h"
 #include "camera.h"
 
+#include "components.h"
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <flecs.h>
+
 std::map<int, bool> keymap;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -33,15 +38,50 @@ static bool KeyPressed(int key)
 	}
 }
 
+glm::mat4 GetModelMatrix(flecs::entity e)
+{
+	const GE::Com::transform* t = e.get<GE::Com::transform>();
+	glm::mat4 transform = glm::translate(glm::mat4(1.0f), t->Position);
+	transform = glm::rotate(transform, glm::radians(t->Rotation), glm::vec3(0, 0, 1));
+	glm::mat4 modelMatrix = glm::inverse(transform);
+
+	return modelMatrix;
+}
+
+glm::mat4 GetModelMatrix(GE::Com::transform t)
+{
+	glm::mat4 transform = glm::translate(glm::mat4(1.0f), t.Position);
+	transform = glm::rotate(transform, glm::radians(t.Rotation), glm::vec3(0, 0, 1));
+	glm::mat4 modelMatrix = glm::inverse(transform);
+
+	return modelMatrix;
+}
+
 int main()
 {
+	flecs::world world;
+
+	auto player = world.entity("player")
+		.set<GE::Com::transform>({ {0.0f, 0.0f, 0.0f}, 0.0f })
+		.add<GE::Com::player>();
+
+		world.entity()
+		.set<GE::Com::transform>({ {0.5f, 0.5f, 0.0f}, 0.0f })
+		.add<GE::Com::platform>();
+
+		world.entity()
+			.set<GE::Com::transform>({ {-0.5f, 0.5f, 0.0f}, 0.0f })
+			.add<GE::Com::platform>();
+
+
+
 	GE::Window win = GE::Window(600, 800, "Sky", key_callback);
 	GE::Camera cam = GE::Camera(-.6, .6, -.8, .8);
 	//cam.SetPosition({0.5f, 0.5f, 0.0f});
 	//cam.SetRotation(90.0f);
 
 	GE::Shader shader = GE::Shader("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/cam-shader.vs", 
-		"C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/texture-shader.fs");
+								   "C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/shaders/texture-shader.fs");
 	shader.use();
 
 	stbi_set_flip_vertically_on_load(true);
@@ -71,8 +111,8 @@ int main()
     VAO.Unbind();
 	IBO.UnBind(); // order matters
 
-	GE::Texture texture = GE::Texture("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/textures/container.jpg", GL_RGB);
-	texture.Bind(GL_TEXTURE0);
+	GE::Texture texture = GE::Texture("C:/Users/jerem/Desktop/Dpcdsb-Game/Game/assets/brackeys_platformer_assets/brackeys_platformer_assets/sprites/world_tileset.png", GL_RGBA);
+	//texture.Bind(GL_TEXTURE0);
 
 	// uncomment this call to draw in wireframe polygons.
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -90,42 +130,72 @@ int main()
 		
 		if (KeyPressed(GLFW_KEY_A))
 		{
-			auto tempvec = cam.GetPosition();
+			//get traansform
+			auto tempvec = player.get<GE::Com::transform>()->Position;
 			tempvec.x += .001;
-			cam.SetPosition(tempvec);
-			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
+
+			//flecs
+			player.set<GE::Com::transform>({tempvec});
+
+			//set transform
+			player.set<GE::Com::transform>({ tempvec });
 		}
 
 		if (KeyPressed(GLFW_KEY_D))
 		{
-			auto tempvec = cam.GetPosition();
+			//get traansform
+			auto tempvec = player.get<GE::Com::transform>()->Position;
 			tempvec.x -= .001;
-			cam.SetPosition(tempvec);
-			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
-		}
-		if (KeyPressed(GLFW_KEY_S))
-		{
-			auto tempvec = cam.GetPosition();
-			tempvec.y += .001;
-			cam.SetPosition(tempvec);
-			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
-		}
-		if (KeyPressed(GLFW_KEY_W))
-		{
-			auto tempvec = cam.GetPosition();
-			tempvec.y -= .001;
-			cam.SetPosition(tempvec);
-			shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix());
+
+			//flecs
+			player.set<GE::Com::transform>({ tempvec });
+
+			//set transform
+			player.set<GE::Com::transform>({ tempvec });
 		}
 
-		//float currentFrame = glfwGetTime();
+		if (KeyPressed(GLFW_KEY_S))
+		{
+			//get traansform
+			auto tempvec = player.get<GE::Com::transform>()->Position;
+			tempvec.y += .001;
+
+			//set transform
+			player.set<GE::Com::transform>({ tempvec });
+		}
+
+		if (KeyPressed(GLFW_KEY_W))
+		{
+			//get traansform
+			auto tempvec = player.get<GE::Com::transform>()->Position;
+			tempvec.y -= .001;
+
+			//set transform
+			player.set<GE::Com::transform>({ tempvec });
+		}
+
 		time = glfwGetTime();
 		shader.setUniformFloat("iTime", time);
 		win.clear();
 
+		// For simple queries the each function can be used
+		world.each([&](GE::Com::platform p, GE::Com::transform t) { // flecs::entity argument is optional
+				shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix() * GetModelMatrix(t));
+				shader.use();
+				VAO.Bind();
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+			});
+
+		
+
+
+		//send transform to shader
+		shader.setUinforMat4("ViewProjection", cam.GetViewProjectionMatrix()* GetModelMatrix(player));
 		shader.use();
 		VAO.Bind();
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+
 
 		win.update();
 	}
