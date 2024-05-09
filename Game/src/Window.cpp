@@ -44,6 +44,7 @@ namespace GE {
         }
 
         glfwSetKeyCallback(m_window, callback);
+        glfwSetWindowAspectRatio(m_window, width, hieght);
 
     }
 

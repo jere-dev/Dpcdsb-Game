@@ -14,6 +14,10 @@ namespace GE {
 		void Bind();
 		void Bind(GLenum target);
 		void UnBind();
+
+		int getWidth() { return width; }
+		int getHeight() { return height; }
+
 	private:
 		unsigned int texture_ID;
 		int width, height, nrChannels;
