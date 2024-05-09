@@ -49,31 +49,45 @@ glm::mat4 GetModelMatrix(GE::Com::transform t)
 	return modelMatrix;
 }
 
-
+void addPlatform(flecs::world& world, glm::vec3 gscale, int x, int y)
+{
+	
+	world.entity()
+		.set<GE::Com::transform>({ {x*-0.72f, y*-0.72f, 0.0f}, gscale, 0.0f })
+		.set<GE::Com::texture>({ 5.0f, 12.0f })
+		.add<GE::Com::rigidBody>()
+		.add<GE::Com::platform>();
+}
 
 int main()
 {
-	flecs::world world;
-	b2World boxWorld({ 0.0f, -9.8f });
-	
 
-	glm::vec3 gscale = { 10.0f, 10.0f, 1.0f };
+	flecs::world world;
+	b2Vec2 gravity = { 0.0f, -60.0f };
+	b2World boxWorld(gravity);
+
+	float timeStep = 1.0f / 60.0f;
+	int32 velocityIterations = 6;
+	int32 positionIterations = 2;
+
+	glm::vec3 gscale = { 5.0f, 5.0f, 1.0f };
 
 	auto player = world.entity("player")
 		.set<GE::Com::transform>({ {0.0f, -1.0f, 0.0f}, gscale, 0.0f })
 		.set<GE::Com::texture>({ 8.0f, 14.0f })
+		.add<GE::Com::rigidBody>()
 		.add<GE::Com::player>();
 
-		world.entity()
-		.set<GE::Com::transform>({ {0.0f, 0.0f, 0.0f}, gscale, 0.0f })
-		.set<GE::Com::texture>({3.0f, 12.0f})
-		.add<GE::Com::platform>();
+	for (int i = 0; i < 5; i++) {
+		addPlatform(world, gscale, i, 0);
+	}
 
-		world.entity()
-		.set<GE::Com::transform>({ {-0.72f, 0.0f, 0.0f}, gscale, 0.0f })
-		.set<GE::Com::texture>({ 3.0f, 12.0f })
-		.add<GE::Com::platform>();
-
+	for (int i = 0; i < 5; i++) {
+		addPlatform(world, gscale, 5+i, 1);
+	}
+	for (int i = 0; i < 5; i++) {
+		addPlatform(world, gscale, 10+i, 3);
+	}
 
 
 	GE::Window win = GE::Window(600, 960, "Sky", key_callback);
@@ -130,29 +144,134 @@ int main()
 	float time = 0;
 	shader.setUniformFloat("iTime", time);
 
+
+
+	world.each([&](GE::Com::rigidBody& rb, GE::Com::transform& t, GE::Com::platform p) {
+		int width, height;
+		glfwGetWindowSize(win.m_window, &width, &height);
+		
+		float posX, posY;
+		posX = (t.Position.x * width * (-1))-475;
+		posY = (t.Position.y * height * (-1));
+
+		rb.bodyDef.position.Set(posX, posY);
+
+		rb.body = boxWorld.CreateBody(&rb.bodyDef);
+
+		b2PolygonShape groundBox;
+		groundBox.SetAsBox(400.0f, 100.0f);
+
+		rb.body->CreateFixture(&groundBox, 0.0f);
+	});
+
+	world.each([&](GE::Com::rigidBody& rb, GE::Com::transform& t, GE::Com::player p) {
+		int width, height;
+		glfwGetWindowSize(win.m_window, &width, &height);
+
+		float posX, posY;
+		posX = t.Position.x * width * (-1);
+		posY = t.Position.y * height * (-1);
+
+		rb.bodyDef.type = b2_dynamicBody;
+		rb.bodyDef.position.Set(posX, posY);
+		rb.body = boxWorld.CreateBody(&rb.bodyDef);
+
+		b2PolygonShape dynamicBox;
+		dynamicBox.SetAsBox(0.5f, 0.5f);
+
+		b2FixtureDef fixtureDef;
+		fixtureDef.shape = &dynamicBox;
+		fixtureDef.density = 1.0f;
+		fixtureDef.friction = 0.3f;
+
+		rb.body->CreateFixture(&fixtureDef);
+	});
+
+	
+
+
+	float cMovespeed = 0.0005;
+	float pt = glfwGetTime();
 	//render after clear and before update or blank screen
 	while (!glfwWindowShouldClose(win.m_window))
 	{
+		float t = glfwGetTime();
+		if (t>= pt+.3)
+		{
+			pt = t;
+			if (KeyPressed(GLFW_KEY_A) || KeyPressed(GLFW_KEY_D))
+			{
+					world.each([&](GE::Com::player player, GE::Com::texture& tex) {
+						if (tex.texX == 8)
+						{
+							tex.texX = 9;
+						}
+						else
+						{
+							tex.texX = 8;
+						}
 
-		world.each([&](GE::Com::player player, GE::Com::transform& t) { 
+						});
+				
+
+			}
+			else
+			{
+				world.each([&](GE::Com::player player, GE::Com::texture& tex) {
+					tex.texX = 8;
+					});
+			}
+		}
+		world.each([&](GE::Com::player player, GE::Com::rigidBody rb, GE::Com::transform& t, GE::Com::texture tex) {
+			boxWorld.Step(timeStep, velocityIterations, positionIterations);
+			b2Vec2 position = rb.body->GetPosition();
+
+			int width, height;
+			glfwGetWindowSize(win.m_window, &width, &height);
+
+			float posX, posY;
+			t.Position.x = ((position.x+550) / width) * (-1);
+			t.Position.y = ((position.y+550) / height) * (-1);
+
+			printf("%4.2f %4.2f\n", rb.body->GetLinearVelocity().x, rb.body->GetLinearVelocity().y);
+		});
+
+		world.each([&](GE::Com::player player, GE::Com::rigidBody rb) { 
+			b2Vec2 vel = b2Vec2(gravity.x, gravity.y);
+
 			if (KeyPressed(GLFW_KEY_A))
 			{
-				t.Position.x += .001;
+				vel.x = -200.0f;
+				glm::vec3 cpos = cam.GetPosition();
+				cpos.x -= cMovespeed;
+				cam.SetPosition(cpos);
 			}
 			if (KeyPressed(GLFW_KEY_D))
 			{
-				t.Position.x -= .001;
+				vel.x = 200.0f;
+				glm::vec3 cpos = cam.GetPosition();
+				cpos.x += cMovespeed;
+				cam.SetPosition(cpos);
 			}
 
 			if (KeyPressed(GLFW_KEY_S))
 			{
-				t.Position.y += .001;
+				vel.y = -200;
+				glm::vec3 cpos = cam.GetPosition();
+				cpos.y -= cMovespeed;
+				cam.SetPosition(cpos);
 			}
 
 			if (KeyPressed(GLFW_KEY_W))
 			{
-				t.Position.y -= .001;
+				vel.y = 500;
+				glm::vec3 cpos = cam.GetPosition();
+				cpos.y += cMovespeed;
+				cam.SetPosition(cpos);
 			}
+
+			rb.body->SetLinearVelocity(vel);
+			rb.body->SetSleepingAllowed(false);
 		});
 
 		time = glfwGetTime();
@@ -169,6 +288,7 @@ int main()
 
 
 		win.update();
+
 	}
 
 }

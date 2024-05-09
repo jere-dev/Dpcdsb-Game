@@ -26,6 +26,7 @@ namespace GE {
 		struct rigidBody
 		{
 			b2BodyDef bodyDef;
+			b2Body* body;
 		};
 	}
 }
